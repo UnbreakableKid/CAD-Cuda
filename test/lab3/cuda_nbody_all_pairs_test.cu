@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 #include <fstream>
+#include <algorithm>
 
 #include <nbody/cuda_nbody_all_pairs.h>
 
@@ -21,8 +22,12 @@ void compare_results(std::stringstream& result_stream, std::string& logfilename)
 
     while (getline (result_stream, bufferResult)) {
         getline (ins, bufferExpected);
+        std::string expected;
+        expected.reserve(bufferExpected.size());
+        std::copy_if(bufferExpected.begin(), bufferExpected.end(), std::back_inserter(expected),
+                     [] (char c) { return c != '\r'; });
 
-        EXPECT_STREQ(bufferResult.c_str(), bufferExpected.c_str());
+        EXPECT_STREQ(bufferResult.c_str(), expected.c_str());
     }
 
     ins.close();

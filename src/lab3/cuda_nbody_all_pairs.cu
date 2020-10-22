@@ -41,6 +41,7 @@ __global__ void test (particle_t* particles, particle_t *pi, const unsigned numb
         /* Use the 2-dimensional gravity rule: F = d * (GMm/d^2) */
         grav_base = GRAV_CONSTANT * (pi->mass) * (pj->mass) / dist_sq;
 
+
         pi->x_force += grav_base * x_sep;
         pi->y_force += grav_base * y_sep;
 
@@ -55,6 +56,7 @@ __global__ void nbody_kernel(particle_t* particles, const unsigned number_partic
 
         pi->x_force = 0;
         pi->y_force = 0;
+
 
         /*
         for (int j = 0; j < number_particles; j++) {

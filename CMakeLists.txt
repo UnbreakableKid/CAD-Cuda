@@ -12,11 +12,13 @@ set (DISPLAY FALSE)
 set (DUMP_RESULT FALSE)
 set (VECTORIZATION FALSE)
 
+
 #######################
 # Find packages
 #######################
 
 #### X11
+
 
 if (${DISPLAY})
 

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="Cluster DI" remoteFilesAllowedToDisappearOnAutoupload="false">
+    <serverData>
+      <paths name="Cluster DI">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/googletest" local="$PROJECT_DIR$/../googletest/src" web="/" />
+            <mapping deploy="/CAD" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="WSL (daa7a87e-e6f5-4e4f-9b5f-aa0d16f505d5)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="dc024305-19c6-4ed6-8dd7-3fb74201875b" name="Cluster DI">
+        <fileTransfer rootFolder="/home/cad11" accessType="SFTP" host="cluster.di.fct.unl.pt" port="12034" sshConfigId="b0cd5932-8528-4243-9151-380d0b35ab1f" sshConfig="cad11@cluster.di.fct.unl.pt:12034 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

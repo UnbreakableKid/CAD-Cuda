@@ -5,8 +5,9 @@
 
 #include <nbody/cuda_nbody_all_pairs.h>
 
-#define RADIUS 2
 static constexpr int thread_block_size = 512;
+
+static constexpr int nStreams = 3;
 
 namespace cadlabs {
 
@@ -99,50 +100,38 @@ namespace cadlabs {
         }
     }
 
-    __global__ void test(particle_t *particles, const unsigned number_particles) {
+    __global__ void test(particle_t *particles, const unsigned number_particles, particle_t *pi) {
 
         int index = blockIdx.x * blockDim.x + threadIdx.x;
+        int lindex = threadIdx.x;
 
-        __shared__ particle_t *temp;
-        //make sure every thread has loaded
+        extern __shared__ particle_t temp[]; //make sure every thread has loaded
 
-        temp[threadIdx.x] = particles[index];
+        temp[lindex] = particles[index];
         __syncthreads();
-
-        particle_t mine = temp[threadIdx.x];
 
         if (index < number_particles) {
 
-            double x, y;
+            particle_t *pj = &temp[lindex];
 
-            for(int i = 0; i < number_particles; i++){
+            double x_sep, y_sep, dist_sq, grav_base;
+            x_sep = pj->x_pos - pi->x_pos;
+            y_sep = pj->y_pos - pi->y_pos;
+            dist_sq = MAX((x_sep * x_sep) + (y_sep * y_sep), 0.01);
 
-                particle_t *pj = &temp[i]; //mem partilhada
+            /* Use the 2-dimensional gravity rule: F = d * (GMm/d^2) */
+            grav_base = GRAV_CONSTANT * (pi->mass) * (pj->mass) / dist_sq;
 
-                double x_sep, y_sep, dist_sq, grav_base;
-                x_sep = pj->x_pos - mine.x_pos;
-                y_sep = pj->y_pos - mine.y_pos;
-                dist_sq = MAX((x_sep * x_sep) + (y_sep * y_sep), 0.01);
+            double x = grav_base * x_sep;
+            double y = grav_base * y_sep;
 
-                /* Use the 2-dimensional gravity rule: F = d * (GMm/d^2) */
-                grav_base = GRAV_CONSTANT * (mine.mass) * (pj->mass) / dist_sq;
-
-
-                 x += grav_base * x_sep;
-                 y += grav_base * y_sep;
-            }
-
-
-            __syncthreads();
-
-            particles[index].x_force = x;
-            particles[index].y_force = y;
-
+            atomicAdd(&(pi->x_force), x);
+            atomicAdd(&(pi->y_force), y);
 
         }
     }
 
-    __global__ void nbody_kernel(particle_t *particles, const unsigned number_particles, particle_t *out) {
+    __global__ void nbody_kernel(particle_t *particles, const unsigned number_particles, int offset) {
         int index = blockIdx.x * blockDim.x + threadIdx.x;
 
         if (index < number_particles) {
@@ -151,7 +140,24 @@ namespace cadlabs {
 
             pi->x_force = 0;
             pi->y_force = 0;
+
+            for (int j = 0; j < number_particles; j++) {
+                particle_t *p = &particles[j];
+                /* compute the force of particle j on particle i */
+                double x_sep, y_sep, dist_sq, grav_base;
+
+                x_sep = p->x_pos - pi->x_pos;
+                y_sep = p->y_pos - pi->y_pos;
+                dist_sq = MAX((x_sep * x_sep) + (y_sep * y_sep), 0.01);
+
+                /* Use the 2-dimensional gravity rule: F = d * (GMm/d^2) */
+                grav_base = GRAV_CONSTANT * (pi->mass) * (p->mass) / dist_sq;
+
+                pi->x_force += grav_base * x_sep;
+                pi->y_force += grav_base * y_sep;            }
+
         }
+
     }
 
     void cuda_nbody_all_pairs::calculate_forces() {
@@ -160,12 +166,32 @@ namespace cadlabs {
         particle_t *out;
         cudaMalloc((void **) &out, number_particles * sizeof(particle_t));
 
-        cudaMemcpy(gpu_particles, particles, number_particles * sizeof(particle_t), cudaMemcpyHostToDevice);
-        nbody_kernel<<<number_blocks, thread_block_size>>>(gpu_particles, number_particles, out);
 
-        test<<<number_blocks, thread_block_size>>>(gpu_particles, number_particles);
+        cudaStream_t stream1, stream2, stream3;
+        cudaStreamCreate ( &stream1) ;
+        cudaStreamCreate ( &stream2) ;
+        cudaStreamCreate ( &stream3) ;
 
-        cudaMemcpy(particles, gpu_particles, number_particles * sizeof(particle_t), cudaMemcpyDeviceToHost);
+        cudaStream_t stream[nStreams] = {stream1, stream2, stream3};
+
+        int streamSize =number_particles;
+
+        for (int i = 0; i < nStreams; ++i) {
+            int offset = i * streamSize;
+            cudaMemcpyAsync(&gpu_particles[offset], &particles[offset], number_particles * sizeof(particle_t), cudaMemcpyHostToDevice, stream[i]);
+            nbody_kernel<<<streamSize/number_blocks, thread_block_size, 0, stream[i]>>>( gpu_particles, number_particles,offset);
+            cudaMemcpyAsync(&particles[offset], &gpu_particles[offset], number_particles * sizeof(particle_t), cudaMemcpyDeviceToHost, stream[i]);
+        }
+
+//        cudaMemcpy(gpu_particles, particles, number_particles * sizeof(particle_t), cudaMemcpyHostToDevice);
+//        nbody_kernel<<<number_blocks, thread_block_size>>>(gpu_particles, number_particles, out);
+//
+//        for (int i = 0; i <number_particles; i++){
+//
+//            test<<<number_blocks, thread_block_size>>>(gpu_particles, number_particles, &gpu_particles[i]);
+//        }
+//
+//        cudaMemcpy(particles, gpu_particles, number_particles * sizeof(particle_t), cudaMemcpyDeviceToHost);
 
     }
 

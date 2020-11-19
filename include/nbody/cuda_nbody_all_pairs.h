@@ -28,7 +28,7 @@ namespace cadlabs {
 
         void all_init_particles();
 
-        void move_all_particles(double step);
+        double *move_all_particles(double step);
 
         particle_t *gpu_particles;
 

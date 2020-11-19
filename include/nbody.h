@@ -126,7 +126,7 @@ namespace cadlabs {
 
         void all_init_particles();
 
-        virtual void move_all_particles(double step);
+        virtual double * move_all_particles(double step);
 
         virtual void calculate_forces();
 

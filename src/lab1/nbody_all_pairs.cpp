@@ -118,17 +118,28 @@ namespace cadlabs {
         }
     }
 
-    void nbody::move_all_particles(double step) {
+    double *nbody::move_all_particles(double step) {
 
         /* then move all particles and return statistics */
         for (int i = 0; i < number_particles; i++) {
             move_particle(&particles[i], step);
         }
+        return new double [2]{max_acc, max_speed};
     }
 
     void nbody::all_move_particles(double step) {
         calculate_forces();
-        move_all_particles(step);
+
+        double *d = move_all_particles(step);
+
+         max_acc = MAX(d[0], max_acc);
+         max_speed = MAX(d[1],max_speed);
+
+
+
+        printf("HERE %f\n", d[0]);
+
+        free(d);
     }
 
 

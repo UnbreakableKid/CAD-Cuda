@@ -135,10 +135,6 @@ namespace cadlabs {
          max_acc = MAX(d[0], max_acc);
          max_speed = MAX(d[1],max_speed);
 
-
-
-        printf("HERE %f\n", d[0]);
-
         free(d);
     }
 

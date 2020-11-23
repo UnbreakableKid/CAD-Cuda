@@ -7,7 +7,7 @@
 
 static constexpr int thread_block_size = 512;
 
-static constexpr int nStreams = 3;
+static constexpr int nStreams = 4;
 
 namespace cadlabs {
 
@@ -162,7 +162,8 @@ namespace cadlabs {
                 grav_base = GRAV_CONSTANT * (pi->mass) * (p->mass) / dist_sq;
 
                 pi->x_force += grav_base * x_sep;
-                pi->y_force += grav_base * y_sep;            }
+                pi->y_force += grav_base * y_sep;
+                }
 
         }
 
@@ -175,32 +176,23 @@ namespace cadlabs {
         cudaMalloc((void **) &out, number_particles * sizeof(particle_t));
 
 
-        cudaStream_t stream1, stream2, stream3;
+        cudaStream_t stream1, stream2, stream3, stream4, stream5;
         cudaStreamCreate ( &stream1) ;
         cudaStreamCreate ( &stream2) ;
         cudaStreamCreate ( &stream3) ;
+        cudaStreamCreate ( &stream4) ;
+        cudaStreamCreate ( &stream5) ;
 
-        cudaStream_t stream[nStreams] = {stream1, stream2, stream3};
+        cudaStream_t stream[nStreams] = {stream1, stream2, stream3, stream4};
 
-        int streamSize =number_particles;
+        int streamSize = number_particles/nStreams;
 
-//        for (int i = 0; i < nStreams; ++i) {
-//            int offset = i * streamSize;
-//            cudaMemcpyAsync(&gpu_particles[offset], &particles[offset], number_particles * sizeof(particle_t), cudaMemcpyHostToDevice, stream[i]);
-//            nbody_kernel<<<streamSize/number_blocks, thread_block_size, 0, stream[i]>>>( gpu_particles, number_particles,offset);
-//            cudaMemcpyAsync(&particles[offset], &gpu_particles[offset], number_particles * sizeof(particle_t), cudaMemcpyDeviceToHost, stream[i]);
-//        }
-
-        cudaMemcpy(gpu_particles, particles, number_particles * sizeof(particle_t), cudaMemcpyHostToDevice);
-        nbody_kernel<<<number_blocks, thread_block_size>>>(gpu_particles, number_particles, 0);
-
-//        for (int i = 0; i <number_particles; i++){
-//
-//            test<<<number_blocks, thread_block_size>>>(gpu_particles, number_particles, &gpu_particles[i]);
-//        }
-//
-//        cudaMemcpy(particles, gpu_particles, number_particles * sizeof(particle_t), cudaMemcpyDeviceToHost);
-
+        for (int i = 0; i < nStreams; ++i) {
+            int offset = i * streamSize;
+            cudaMemcpyAsync(&gpu_particles[offset], &particles[offset], number_particles * sizeof(particle_t), cudaMemcpyHostToDevice, stream[i]);
+            nbody_kernel<<<streamSize/number_blocks, thread_block_size, 0, stream[i]>>>( gpu_particles, number_particles,offset);
+            cudaMemcpyAsync(&particles[offset], &gpu_particles[offset], number_particles * sizeof(particle_t), cudaMemcpyDeviceToHost, stream[i]);
+        }
     }
 
 
@@ -236,36 +228,7 @@ namespace cadlabs {
     }
 
     double * cuda_nbody_all_pairs::move_all_particles(double step) {
-//
-        double *speeds;
-        double *d_speeds;
-        speeds = (double *)malloc(sizeof(double )* number_particles);
-
-        cudaMalloc((void**)&d_speeds,(sizeof(double )* number_particles));
-
-        double *accs;
-        double *d_accs;
-        accs = (double *)malloc(sizeof(double )* number_particles);
-
-        cudaMalloc((void**)&d_accs,(sizeof(double )* number_particles));
-
-        all_pairs_kernel<<<number_blocks, thread_block_size>>>(gpu_particles,number_particles,step, d_speeds,d_accs);
-
-        double speed = 0;
-        double acc = 0;
-
-        cudaMemcpy(accs, d_accs, number_particles * sizeof(double ), cudaMemcpyDeviceToHost);
-        cudaMemcpy(speeds, d_speeds, number_particles * sizeof(double ), cudaMemcpyDeviceToHost);
-        cudaMemcpy(particles, gpu_particles, number_particles * sizeof(particle_t), cudaMemcpyDeviceToHost);
-
-        for (int i= 0; i < number_particles; i++){
-            speed = MAX(speed, speeds[i]);
-            acc = MAX(acc, accs[i]);
-        }
-
-        cudaFree(d_speeds);
-        cudaFree(d_accs);
-        return new double[2]{acc, speed};
+        return nbody::move_all_particles(step);
     }
 
     void cuda_nbody_all_pairs::print_all_particles(std::ostream &out) {

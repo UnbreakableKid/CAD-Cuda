@@ -80,7 +80,7 @@ int main(int argc, char**argv) {
     printf("nparticles: %d\n", nbody.number_particles);
     printf("T_FINAL: %f\n", nbody.T_FINAL);
     printf("-----------------------------\n");
-    t.output_stats<false>(std::cout);
+    t.output_stats<true>(std::cout);
 
     return 0;
 }
